@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Focus Timer | Productivité</title>
+<style>
+  :root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --secondary: #10b981;
+    --danger: #ef4444;
+    --dark: #1e293b;
+    --darker: #0f172a;
+    --light: #f8fafc;
+    --gray: #64748b;
+  }
+  
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  
+  body {
+    background: linear-gradient(135deg, var(--darker), var(--dark));
+    color: var(--light);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    line-height: 1.6;
+  }
+  
+  .container {
+    width: 100%;
+    max-width: 500px;
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+    transition: transform 0.3s ease;
+  }
+  
+  .container:hover {
+    transform: translateY(-5px);
+  }
+  
+  h1 {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    background: linear-gradient(to right, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 700;
+  }
+  
+  .subtitle {
+    color: var(--gray);
+    margin-bottom: 30px;
+    font-size: 1rem;
+  }
+  
+  .input-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    justify-content: center;
+  }
+  
+  input {
+    padding: 12px 16px;
+    font-size: 1rem;
+    border: none;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.7);
+    color: var(--light);
+    width: 120px;
+    text-align: center;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+  }
+  
+  input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--primary);
+  }
+  
+  button {
+    padding: 12px 24px;
+    font-size: 1rem;
+    border: none;
+    border-radius: 12px;
+    background: var(--primary);
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  button:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  button:active {
+    transform: translateY(0);
+  }
+  
+  button:disabled {
+    background: var(--gray);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+  
+  #timer {
+    font-size: 4.5rem;
+    font-weight: 700;
+    margin: 20px 0;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+    transition: color 0.3s ease;
+  }
+  
+  .progress-container {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    margin: 20px 0;
+    overflow: hidden;
+  }
+  
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(to right, var(--primary), var(--secondary));
+    border-radius: 10px;
+    width: 100%;
+    transition: width 1s linear;
+  }
+  
+  .stats {
+    display: flex;
+    justify-content: space-between;
+    margin: 25px 0;
+    gap: 15px;
+  }
+  
+  .stat-card {
+    flex: 1;
+    background: rgba(15, 23, 42, 0.7);
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+  }
+  
+  .stat-label {
+    font-size: 0.85rem;
+    color: var(--gray);
+  }
+  
+  #concentration {
+    color: var(--secondary);
+  }
+  
+  #lostFocusCount {
+    color: var(--danger);
+  }
+  
+  #message {
+    font-size: 1.1rem;
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.5);
+    transition: all 0.3s ease;
+  }
+  
+  .pulse {
+    animation: pulse 1.5s infinite;
+  }
+  
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+  
+  .shake {
+    animation: shake 0.5s;
+  }
+  
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+  }
+  
+  .completed {
+    color: var(--secondary);
+    animation: completed 2s ease;
+  }
+  
+  @keyframes completed {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+  
+  @media (max-width: 600px) {
+    .container {
+      padding: 20px;
+    }
+    
+    h1 {
+      font-size: 2rem;
+    }
+    
+    #timer {
+      font-size: 3.5rem;
+    }
+    
+    .stats {
+      flex-direction: column;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Focus Timer</h1>
+  <p class="subtitle">Améliore ta productivité et reste concentré</p>
+  
+  <div class="input-group">
+    <input type="number" id="focusTime" placeholder="Minutes" min="1" value="25">
+    <button id="startBtn">Démarrer</button>
+    <button id="pauseBtn" disabled>Pause</button>
+  </div>
+  
+  <div id="timer">25:00</div>
+  
+  <div class="progress-container">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+  
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-value" id="concentration">100%</div>
+      <div class="stat-label">Concentration</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="lostFocusCount">0</div>
+      <div class="stat-label">Interruptions</div>
+    </div>
+  </div>
+  
+  <div id="message">Prêt à commencer ? Définis ton temps et appuie sur Démarrer</div>
+</div>
+
+<script>
+let totalTime = 0;
+let remainingTime = 0;
+let concentration = 100;
+let lostFocusCount = 0;
+let interval;
+let isRunning = false;
+let isPaused = false;
+
+const timerEl = document.getElementById('timer');
+const concentrationEl = document.getElementById('concentration');
+const messageEl = document.getElementById('message');
+const startBtn = document.getElementById('startBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const progressBar = document.getElementById('progressBar');
+const lostFocusCountEl = document.getElementById('lostFocusCount');
+
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = (seconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function updateMessage() {
+  if (concentration > 80) {
+    messageEl.textContent = "Super concentré, continue comme ça ! 💪";
+    messageEl.style.background = "rgba(16, 185, 129, 0.2)";
+  } else if (concentration > 60) {
+    messageEl.textContent = "Attention, tu perds un peu de concentration... 🧐";
+    messageEl.style.background = "rgba(245, 158, 11, 0.2)";
+  } else if (concentration > 40) {
+    messageEl.textContent = "Tu te déconcentres beaucoup, recentre-toi ! 🤔";
+    messageEl.style.background = "rgba(245, 158, 11, 0.3)";
+  } else {
+    messageEl.textContent = "Oh non, tu as presque perdu toute ta concentration ! 😵";
+    messageEl.style.background = "rgba(239, 68, 68, 0.3)";
+    messageEl.classList.add('shake');
+    setTimeout(() => messageEl.classList.remove('shake'), 500);
+  }
+}
+
+function startFocus() {
+  const minutes = parseInt(document.getElementById('focusTime').value);
+  if (isNaN(minutes) || minutes <= 0) {
+    messageEl.textContent = "Entre un nombre valide de minutes !";
+    messageEl.classList.add('shake');
+    setTimeout(() => messageEl.classList.remove('shake'), 500);
+    return;
+  }
+  
+  totalTime = minutes * 60;
+  remainingTime = totalTime;
+  concentration = 100;
+  lostFocusCount = 0;
+  isRunning = true;
+  isPaused = false;
+  
+  timerEl.textContent = formatTime(remainingTime);
+  concentrationEl.textContent = `${concentration}%`;
+  lostFocusCountEl.textContent = lostFocusCount;
+  progressBar.style.width = '100%';
+  
+  startBtn.disabled = true;
+  pauseBtn.disabled = false;
+  
+  updateMessage();
+  
+  interval = setInterval(() => {
+    if (!isPaused) {
+      remainingTime--;
+      timerEl.textContent = formatTime(remainingTime);
+      
+      // Mise à jour de la barre de progression
+      const progress = (remainingTime / totalTime) * 100;
+      progressBar.style.width = `${progress}%`;
+      
+      // Changement de couleur de la barre en fonction du temps restant
+      if (progress < 20) {
+        progressBar.style.background = "var(--danger)";
+      } else if (progress < 50) {
+        progressBar.style.background = "var(--secondary)";
+      }
+      
+      if (remainingTime <= 0) {
+        clearInterval(interval);
+        messageEl.textContent = "Session terminée ! Bravo ! 🎉";
+        messageEl.style.background = "rgba(16, 185, 129, 0.3)";
+        timerEl.classList.add('completed');
+        startBtn.disabled = false;
+        pauseBtn.disabled = true;
+        isRunning = false;
+      }
+    }
+  }, 1000);
+}
+
+function togglePause() {
+  if (isRunning) {
+    if (isPaused) {
+      // Reprendre
+      isPaused = false;
+      pauseBtn.textContent = "Pause";
+      messageEl.textContent = "Reprise de la session !";
+      messageEl.classList.add('pulse');
+      setTimeout(() => messageEl.classList.remove('pulse'), 1500);
+    } else {
+      // Mettre en pause
+      isPaused = true;
+      pauseBtn.textContent = "Reprendre";
+      messageEl.textContent = "Session en pause ⏸️";
+    }
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && isRunning && !isPaused) {
+    lostFocusCount++;
+    concentration -= 10;
+    if (concentration < 0) concentration = 0;
+    concentrationEl.textContent = `${concentration}%`;
+    lostFocusCountEl.textContent = lostFocusCount;
+    updateMessage();
+    
+    // Animation de secousse pour la carte de concentration
+    concentrationEl.parentElement.classList.add('shake');
+    setTimeout(() => concentrationEl.parentElement.classList.remove('shake'), 500);
+  }
+});
+
+startBtn.addEventListener('click', startFocus);
+pauseBtn.addEventListener('click', togglePause);
+
+// Initialisation
+timerEl.textContent = formatTime(25 * 60);
+progressBar.style.width = '100%';
+</script>
+
+</body>
+</html>
