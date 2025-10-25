@@ -285,6 +285,7 @@ let isRunning = false;
 let isPaused = false;
 let lastFocusTime = 0;
 let timeOutOfFocus = 0;
+let recoveryInterval;
 
 const timerEl = document.getElementById('timer');
 const concentrationEl = document.getElementById('concentration');
@@ -331,9 +332,9 @@ function startFocus() {
   remainingTime = totalTime;
   concentration = 100;
   lostFocusCount = 0;
-  timeOutOfFocus = 0;
   isRunning = true;
   isPaused = false;
+  timeOutOfFocus = 0;
   
   timerEl.textContent = formatTime(remainingTime);
   concentrationEl.textContent = `${concentration.toFixed(1)}%`;
@@ -345,8 +346,7 @@ function startFocus() {
   
   updateMessage();
   
-  lastFocusTime = Date.now();
-  
+  // Démarrer l'intervalle principal
   interval = setInterval(() => {
     if (!isPaused) {
       remainingTime--;
@@ -365,6 +365,7 @@ function startFocus() {
       
       if (remainingTime <= 0) {
         clearInterval(interval);
+        if (recoveryInterval) clearInterval(recoveryInterval);
         messageEl.textContent = "Session terminée ! Bravo ! 🎉";
         messageEl.style.background = "rgba(16, 185, 129, 0.3)";
         timerEl.classList.add('completed');
@@ -372,6 +373,17 @@ function startFocus() {
         pauseBtn.disabled = true;
         isRunning = false;
       }
+    }
+  }, 1000);
+  
+  // Démarrer l'intervalle de récupération
+  if (recoveryInterval) clearInterval(recoveryInterval);
+  recoveryInterval = setInterval(() => {
+    if (isRunning && !isPaused && concentration < 100) {
+      concentration += 0.1;
+      if (concentration > 100) concentration = 100;
+      concentrationEl.textContent = `${concentration.toFixed(1)}%`;
+      updateMessage();
     }
   }, 1000);
 }
@@ -385,7 +397,6 @@ function togglePause() {
       messageEl.textContent = "Reprise de la session !";
       messageEl.classList.add('pulse');
       setTimeout(() => messageEl.classList.remove('pulse'), 1500);
-      lastFocusTime = Date.now();
     } else {
       // Mettre en pause
       isPaused = true;
@@ -395,72 +406,38 @@ function togglePause() {
   }
 }
 
-function calculateConcentrationLoss(timeOutOfFocusMs) {
-  // Perte de concentration proportionnelle au temps passé hors de l'onglet
-  // 1% de concentration perdue par seconde hors de l'onglet
-  const secondsOut = timeOutOfFocusMs / 1000;
-  const concentrationLoss = secondsOut * 1; // 1% par seconde
-  
-  return concentrationLoss;
-}
+// Variables pour le suivi du temps hors focus
+let focusLostTime = 0;
+let isCurrentlyOutOfFocus = false;
 
 document.addEventListener('visibilitychange', () => {
-  if (isRunning && !isPaused) {
-    if (document.hidden) {
-      // On quitte l'onglet
-      lastFocusTime = Date.now();
-      lostFocusCount++;
-    } else {
-      // On revient dans l'onglet
-      const currentTime = Date.now();
-      const timeAway = currentTime - lastFocusTime;
-      timeOutOfFocus += timeAway;
-      
-      // Calculer la perte de concentration proportionnelle
-      const concentrationLoss = calculateConcentrationLoss(timeAway);
-      concentration -= concentrationLoss;
-      
-      if (concentration < 0) concentration = 0;
-      
-      concentrationEl.textContent = `${concentration.toFixed(1)}%`;
-      lostFocusCountEl.textContent = lostFocusCount;
-      updateMessage();
-      
-      // Animation de secousse pour la carte de concentration
-      concentrationEl.parentElement.classList.add('shake');
-      setTimeout(() => concentrationEl.parentElement.classList.remove('shake'), 500);
-    }
+  if (document.hidden && isRunning && !isPaused) {
+    // L'utilisateur quitte l'onglet
+    focusLostTime = Date.now();
+    isCurrentlyOutOfFocus = true;
+    lostFocusCount++;
+    lostFocusCountEl.textContent = lostFocusCount;
+    
+    // Animation de secousse pour la carte de concentration
+    concentrationEl.parentElement.classList.add('shake');
+    setTimeout(() => concentrationEl.parentElement.classList.remove('shake'), 500);
+  } else if (!document.hidden && isRunning && !isPaused && isCurrentlyOutOfFocus) {
+    // L'utilisateur revient à l'onglet
+    const timeAway = Date.now() - focusLostTime;
+    isCurrentlyOutOfFocus = false;
+    
+    // Calculer la pénalité basée sur le temps passé hors de l'onglet
+    // 1% de concentration perdu par seconde hors de l'onglet
+    const penalty = timeAway / 1000;
+    concentration -= penalty;
+    
+    // S'assurer que la concentration ne devient pas négative
+    if (concentration < 0) concentration = 0;
+    
+    concentrationEl.textContent = `${concentration.toFixed(1)}%`;
+    updateMessage();
   }
 });
-
-// Fonction pour récupérer de la concentration
-function recoverConcentration(percentage) {
-  concentration += percentage;
-  if (concentration > 100) concentration = 100;
-  concentrationEl.textContent = `${concentration.toFixed(1)}%`;
-  updateMessage();
-  
-  // Animation de pulse pour montrer la récupération
-  concentrationEl.classList.add('pulse');
-  setTimeout(() => concentrationEl.classList.remove('pulse'), 1000);
-}
-
-// Ajout d'un bouton pour récupérer de la concentration (optionnel)
-function addRecoveryButton() {
-  const recoveryBtn = document.createElement('button');
-  recoveryBtn.textContent = "+10% Concentration";
-  recoveryBtn.id = 'recoveryBtn';
-  recoveryBtn.style.marginTop = '10px';
-  recoveryBtn.style.background = 'var(--secondary)';
-  
-  recoveryBtn.addEventListener('click', () => {
-    if (isRunning && !isPaused) {
-      recoverConcentration(10);
-    }
-  });
-  
-  document.querySelector('.input-group').appendChild(recoveryBtn);
-}
 
 startBtn.addEventListener('click', startFocus);
 pauseBtn.addEventListener('click', togglePause);
@@ -468,7 +445,6 @@ pauseBtn.addEventListener('click', togglePause);
 // Initialisation
 timerEl.textContent = formatTime(25 * 60);
 progressBar.style.width = '100%';
-addRecoveryButton();
 </script>
 
 </body>
