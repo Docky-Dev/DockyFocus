@@ -283,6 +283,8 @@ let lostFocusCount = 0;
 let interval;
 let isRunning = false;
 let isPaused = false;
+let lastFocusTime = 0;
+let timeOutOfFocus = 0;
 
 const timerEl = document.getElementById('timer');
 const concentrationEl = document.getElementById('concentration');
@@ -329,11 +331,12 @@ function startFocus() {
   remainingTime = totalTime;
   concentration = 100;
   lostFocusCount = 0;
+  timeOutOfFocus = 0;
   isRunning = true;
   isPaused = false;
   
   timerEl.textContent = formatTime(remainingTime);
-  concentrationEl.textContent = `${concentration}%`;
+  concentrationEl.textContent = `${concentration.toFixed(1)}%`;
   lostFocusCountEl.textContent = lostFocusCount;
   progressBar.style.width = '100%';
   
@@ -341,6 +344,8 @@ function startFocus() {
   pauseBtn.disabled = false;
   
   updateMessage();
+  
+  lastFocusTime = Date.now();
   
   interval = setInterval(() => {
     if (!isPaused) {
@@ -380,6 +385,7 @@ function togglePause() {
       messageEl.textContent = "Reprise de la session !";
       messageEl.classList.add('pulse');
       setTimeout(() => messageEl.classList.remove('pulse'), 1500);
+      lastFocusTime = Date.now();
     } else {
       // Mettre en pause
       isPaused = true;
@@ -389,20 +395,72 @@ function togglePause() {
   }
 }
 
+function calculateConcentrationLoss(timeOutOfFocusMs) {
+  // Perte de concentration proportionnelle au temps passé hors de l'onglet
+  // 1% de concentration perdue par seconde hors de l'onglet
+  const secondsOut = timeOutOfFocusMs / 1000;
+  const concentrationLoss = secondsOut * 1; // 1% par seconde
+  
+  return concentrationLoss;
+}
+
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && isRunning && !isPaused) {
-    lostFocusCount++;
-    concentration -= 10;
-    if (concentration < 0) concentration = 0;
-    concentrationEl.textContent = `${concentration}%`;
-    lostFocusCountEl.textContent = lostFocusCount;
-    updateMessage();
-    
-    // Animation de secousse pour la carte de concentration
-    concentrationEl.parentElement.classList.add('shake');
-    setTimeout(() => concentrationEl.parentElement.classList.remove('shake'), 500);
+  if (isRunning && !isPaused) {
+    if (document.hidden) {
+      // On quitte l'onglet
+      lastFocusTime = Date.now();
+      lostFocusCount++;
+    } else {
+      // On revient dans l'onglet
+      const currentTime = Date.now();
+      const timeAway = currentTime - lastFocusTime;
+      timeOutOfFocus += timeAway;
+      
+      // Calculer la perte de concentration proportionnelle
+      const concentrationLoss = calculateConcentrationLoss(timeAway);
+      concentration -= concentrationLoss;
+      
+      if (concentration < 0) concentration = 0;
+      
+      concentrationEl.textContent = `${concentration.toFixed(1)}%`;
+      lostFocusCountEl.textContent = lostFocusCount;
+      updateMessage();
+      
+      // Animation de secousse pour la carte de concentration
+      concentrationEl.parentElement.classList.add('shake');
+      setTimeout(() => concentrationEl.parentElement.classList.remove('shake'), 500);
+    }
   }
 });
+
+// Fonction pour récupérer de la concentration
+function recoverConcentration(percentage) {
+  concentration += percentage;
+  if (concentration > 100) concentration = 100;
+  concentrationEl.textContent = `${concentration.toFixed(1)}%`;
+  updateMessage();
+  
+  // Animation de pulse pour montrer la récupération
+  concentrationEl.classList.add('pulse');
+  setTimeout(() => concentrationEl.classList.remove('pulse'), 1000);
+}
+
+// Ajout d'un bouton pour récupérer de la concentration (optionnel)
+function addRecoveryButton() {
+  const recoveryBtn = document.createElement('button');
+  recoveryBtn.textContent = "+10% Concentration";
+  recoveryBtn.id = 'recoveryBtn';
+  recoveryBtn.style.marginTop = '10px';
+  recoveryBtn.style.background = 'var(--secondary)';
+  
+  recoveryBtn.addEventListener('click', () => {
+    if (isRunning && !isPaused) {
+      recoverConcentration(10);
+    }
+  });
+  
+  document.querySelector('.input-group').appendChild(recoveryBtn);
+}
 
 startBtn.addEventListener('click', startFocus);
 pauseBtn.addEventListener('click', togglePause);
@@ -410,6 +468,7 @@ pauseBtn.addEventListener('click', togglePause);
 // Initialisation
 timerEl.textContent = formatTime(25 * 60);
 progressBar.style.width = '100%';
+addRecoveryButton();
 </script>
 
 </body>
