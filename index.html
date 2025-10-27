@@ -374,7 +374,7 @@ function startFocus() {
         isRunning = false;
       }
     }
-  }, 1000);
+  }, 2000);
   
   // Démarrer l'intervalle de récupération
   if (recoveryInterval) clearInterval(recoveryInterval);
@@ -385,7 +385,7 @@ function startFocus() {
       concentrationEl.textContent = `${concentration.toFixed(1)}%`;
       updateMessage();
     }
-  }, 1000);
+  }, 200);
 }
 
 function togglePause() {
